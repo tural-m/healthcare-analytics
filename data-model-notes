@@ -1,0 +1,61 @@
+# Data Model Notes
+
+## Source
+Raw relational data extracted from **DBeaver**.
+
+## Normalization Steps (Power Query Editor)
+
+### Patient Table
+- Removed duplicate patient records
+- Standardized name formatting (First + Last)
+- Resolved missing gender values → tagged as `Unspecified`
+- Created Age Group buckets: `39-`, `40-64`, `65+`
+
+### Case Table
+- Normalized case type labels (e.g. trimmed whitespace, standardized casing)
+- Mapped case statuses to standard categories
+- Linked cases to patients via Patient ID foreign key
+
+### Insurance Table
+- Identified records with missing Insurance Name or Insurance ID
+- Flagged as `[Missing]` for separate analysis
+- Linked to cases via Case ID
+
+### Doctor Table
+- Deduplicated doctor records
+- Aggregated Billed, Paid, Dedcop, Adjustment, Balance per doctor
+
+### Attorney Table
+- Normalized firm names
+- Linked attorney fees to case records by year
+
+### User Table
+- Identified active vs inactive users based on billing activity
+- Aggregated performance metrics: Billed, Paid, Adjustment, Dedcop, Balance
+
+## Star Schema (Power BI Data Model)
+
+```
+                    ┌─────────────┐
+                    │  DIM_DATE   │
+                    └──────┬──────┘
+                           │
+┌──────────────┐    ┌──────┴──────┐    ┌───────────────┐
+│ DIM_PATIENT  ├────┤  FACT_CASES ├────┤ DIM_INSURANCE │
+└──────────────┘    └──────┬──────┘    └───────────────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+       ┌──────┴───┐  ┌─────┴────┐  ┌───┴──────────┐
+       │DIM_DOCTOR│  │DIM_ATTY  │  │  DIM_USER    │
+       └──────────┘  └──────────┘  └──────────────┘
+```
+
+## Key Measures (DAX)
+
+| Measure | Formula Logic |
+|---|---|
+| Collection Rate | Paid / Billed |
+| Balance | Billed - Paid - Adjustment - Dedcop |
+| Active Users | Count of users with Billed > 0 |
+| Avg Attorney Fee | Total Attorney Fee / Count of Attorneys |
